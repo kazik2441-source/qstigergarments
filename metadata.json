@@ -1,0 +1,6 @@
+{
+  "name": "Q.S Tiger Garments",
+  "description": "Professional garment manufacturer specializing in premium knitwear and baby denim collections, with 100% organic cotton and zero-waste fabric recycling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
