@@ -72,8 +72,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     
     // Check if user already exists
     const users = await getUsers();
-    if (users.find((u: any) => u.email === formData.email)) {
-      setAuthError('An account with this email already exists.');
+    if (users.find((u: any) => u.email === formData.email || u.mobile === formData.mobile)) {
+      setAuthError('Account is already created');
       return;
     }
 
