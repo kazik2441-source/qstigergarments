@@ -5,6 +5,7 @@ import { Shirt, Baby, Grid, CheckCircle2, MessageSquare, ArrowUpRight, Award, X,
 import { PRODUCTS, CONTACT_INFO, ProductItem } from '../data';
 import { api, optimizeCloudinaryUrl } from '../services/api';
 import { FaWhatsapp } from 'react-icons/fa';
+import ImageWithLoader from './ImageWithLoader';
 
 export default function ProductSection() {
   const navigate = useNavigate();
@@ -165,11 +166,12 @@ export default function ProductSection() {
                     className="w-full h-40 sm:h-56 overflow-hidden bg-white relative flex items-center justify-center p-3 sm:p-4 cursor-pointer"
                     onClick={() => navigate(`/product/${product.id}`)}
                   >
-                    <img 
+                    <ImageWithLoader 
                       src={optimizeCloudinaryUrl(product.image)} 
                       alt={product.name} 
                       loading="lazy"
                       className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                      containerClassName="w-full h-full"
                     />
                     {/* Top Right Action Icons Overlay */}
                     <div className="absolute top-4 right-4 z-20 flex flex-col space-y-2">

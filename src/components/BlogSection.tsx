@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Calendar } from 'lucide-react';
 import { api, optimizeCloudinaryUrl } from '../services/api';
+import ImageWithLoader from './ImageWithLoader';
 
 export default function BlogSection() {
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
@@ -39,7 +40,13 @@ export default function BlogSection() {
             <div key={post.id} className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col">
               {post.image && (
                 <div className="h-48 overflow-hidden">
-                  <img src={optimizeCloudinaryUrl(post.image)} alt={post.title} loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                  <ImageWithLoader 
+                    src={optimizeCloudinaryUrl(post.image)} 
+                    alt={post.title} 
+                    loading="lazy" 
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" 
+                    containerClassName="w-full h-full"
+                  />
                 </div>
               )}
               <div className="p-6 flex flex-col flex-grow">

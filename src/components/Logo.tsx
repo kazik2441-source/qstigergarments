@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 const logoImg = '/favicon.jpg';
 import { api, optimizeCloudinaryUrl } from '../services/api';
+import ImageWithLoader from './ImageWithLoader';
 
 interface LogoProps {
   className?: string;
@@ -32,12 +33,13 @@ export default function Logo({ className = '', size = 120, variant = 'full' }: L
   }, []);
 
   return (
-    <img 
+    <ImageWithLoader
       src={optimizeCloudinaryUrl(customLogo || logoImg)} 
       alt="Official Logo" 
       loading="lazy"
       style={{ width: size, height: 'auto', maxHeight: size }} 
       className={`object-contain ${className}`} 
+      containerClassName="inline-block"
     />
   );
 }

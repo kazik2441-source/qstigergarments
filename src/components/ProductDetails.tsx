@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Share2, CheckCircle2, ChevronLeft, ChevronRight, Search, X, Heart, ZoomIn, ArrowLeft } from 'lucide-react';
 import { api, optimizeCloudinaryUrl } from '../services/api';
 import { CONTACT_INFO, PRODUCTS } from '../data';
+import ImageWithLoader from './ImageWithLoader';
 import { FaWhatsapp } from 'react-icons/fa';
 import Header from './Header';
 import Footer from './Footer';
@@ -20,6 +21,11 @@ export default function ProductDetails() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [isMainImageLoaded, setIsMainImageLoaded] = useState(false);
+
+  useEffect(() => {
+    setIsMainImageLoaded(false);
+  }, [activeImageIndex, slug]);
 
   useEffect(() => {
     // Scroll to top when slug changes
@@ -207,29 +213,37 @@ export default function ProductDetails() {
                 }}
               >
                 {allImages.length > 0 ? (
-                  <motion.img 
-                    key={activeImageIndex}
-                    src={optimizeCloudinaryUrl(allImages[activeImageIndex])} 
-                    alt={product.name} 
-                    loading="lazy"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2 }}
-                    drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.2}
-                    onDragEnd={(e, { offset }) => {
-                      if (offset.x < -50) {
-                        e.stopPropagation();
-                        setActiveImageIndex(prev => prev < allImages.length - 1 ? prev + 1 : 0);
-                      } else if (offset.x > 50) {
-                        e.stopPropagation();
-                        setActiveImageIndex(prev => prev > 0 ? prev - 1 : allImages.length - 1);
-                      }
-                    }}
-                    className="w-full h-full max-h-[60vh] object-contain cursor-grab active:cursor-grabbing relative z-10"
-                  />
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    {!isMainImageLoaded && (
+                      <div className="absolute inset-0 bg-gray-100/60 animate-pulse rounded-2xl flex items-center justify-center z-10">
+                        <div className="w-8 h-8 border-3 border-tiger-orange border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                    <motion.img 
+                      key={activeImageIndex}
+                      src={optimizeCloudinaryUrl(allImages[activeImageIndex])} 
+                      alt={product.name} 
+                      loading="lazy"
+                      onLoad={() => setIsMainImageLoaded(true)}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: isMainImageLoaded ? 1 : 0, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.2}
+                      onDragEnd={(e, { offset }) => {
+                        if (offset.x < -50) {
+                          e.stopPropagation();
+                          setActiveImageIndex(prev => prev < allImages.length - 1 ? prev + 1 : 0);
+                        } else if (offset.x > 50) {
+                          e.stopPropagation();
+                          setActiveImageIndex(prev => prev > 0 ? prev - 1 : allImages.length - 1);
+                        }
+                      }}
+                      className="w-full h-full max-h-[60vh] object-contain cursor-grab active:cursor-grabbing relative z-10"
+                    />
+                  </div>
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
                     <span className="text-sm">No image available</span>
@@ -312,7 +326,12 @@ export default function ProductDetails() {
                         activeImageIndex === idx ? 'border-tiger-orange opacity-100' : 'border-transparent opacity-60 hover:opacity-100'
                       }`}
                     >
-                      <img src={optimizeCloudinaryUrl(img)} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                      <ImageWithLoader 
+                        src={optimizeCloudinaryUrl(img)} 
+                        alt={`Thumbnail ${idx + 1}`} 
+                        className="w-full h-full object-cover" 
+                        containerClassName="w-full h-full"
+                      />
                     </button>
                   ))}
                 </div>

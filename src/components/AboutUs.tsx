@@ -3,6 +3,7 @@ import { Leaf, RefreshCw, Layers, Sparkles, Building, BookmarkCheck } from 'luci
 import { ESTABLISHED_YEAR, SUSTAINABILITY_PILLARS, COMPANY_NAME } from '../data';
 import { api, optimizeCloudinaryUrl } from '../services/api';
 import ceoImg from '../assets/ceo.jpg';
+import ImageWithLoader from './ImageWithLoader';
 
 export default function AboutUs() {
   const [siteName, setSiteName] = useState(COMPANY_NAME);
@@ -158,11 +159,12 @@ export default function AboutUs() {
             {/* Left: CEO Large Photo */}
             <div className="lg:col-span-7 flex flex-col items-center">
               <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-xl border-4 border-white">
-                <img 
+                <ImageWithLoader 
                   src={optimizeCloudinaryUrl(ceoImage)} 
                   alt="KAZI SHAKAOTULLA - CEO" 
                   loading="lazy"
                   className="w-full h-auto object-cover aspect-[3/4]"
+                  containerClassName="w-full h-auto aspect-[3/4]"
                 />
               </div>
               <div className="text-center mt-6">

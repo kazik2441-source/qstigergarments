@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, Quote, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api, optimizeCloudinaryUrl } from '../services/api';
+import ImageWithLoader from './ImageWithLoader';
 
 export default function ReviewsSection() {
   const [reviews, setReviews] = useState<any[]>([]);
@@ -116,11 +117,12 @@ export default function ReviewsSection() {
 
                 <div className="flex flex-col items-center space-y-3">
                   {reviews[currentIndex].avatar ? (
-                    <img 
+                    <ImageWithLoader 
                       src={optimizeCloudinaryUrl(reviews[currentIndex].avatar)} 
                       alt={reviews[currentIndex].name} 
                       loading="lazy"
                       className="w-16 h-16 rounded-full object-cover border-2 border-tiger-orange p-0.5"
+                      containerClassName="w-16 h-16 rounded-full"
                     />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-tiger-orange/20 border-2 border-tiger-orange p-0.5 flex items-center justify-center">
