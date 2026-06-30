@@ -387,8 +387,8 @@ export default function ProductDetails() {
                     </div>
                   )
                 )}
-                <div className="text-xs font-extrabold text-purple-800 bg-[#E6E6FA] border border-purple-200 px-3 py-1.5 rounded-xl select-none uppercase">
-                  PRICE EXCLUDES APPLICABLE TAXES
+                <div className="text-[11px] text-[#666666] select-none mt-1">
+                  Plus applicable taxes
                 </div>
               </div>
 
@@ -595,10 +595,6 @@ function SimilarProductCard({ product, navigate }: { product: any, navigate: any
             ) : (
               <span className="text-sm sm:text-base font-bold text-gray-900">{product.price || 'Price on request'}</span>
             )}
-            {/* PRICE EXCLUDES APPLICABLE TAXES next to the price */}
-            <span className="text-[8px] font-bold text-purple-800 bg-[#E6E6FA] border border-purple-200 px-1.5 py-0.5 rounded uppercase whitespace-nowrap">
-              PRICE EXCLUDES APPLICABLE TAXES
-            </span>
           </div>
         </div>
       </div>

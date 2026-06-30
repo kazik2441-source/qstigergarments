@@ -226,19 +226,11 @@ function WishlistProductCard({ product, toggleWishlist, navigate }: { product: a
             ) : (
               <span className="text-base sm:text-lg font-bold text-gray-900">₹{product.originalPrice}</span>
             )}
-            {/* PRICE EXCLUDES APPLICABLE TAXES next to the price */}
-            <span className="text-[8px] sm:text-[9px] font-bold text-purple-800 bg-[#E6E6FA] border border-purple-200 px-1.5 py-0.5 rounded uppercase whitespace-nowrap">
-              PRICE EXCLUDES APPLICABLE TAXES
-            </span>
           </div>
         ) : (
           product.price && (
             <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 mt-1 mb-2 shrink-0 select-none">
               <span className="text-base sm:text-lg font-bold text-gray-900">{product.price}</span>
-              {/* PRICE EXCLUDES APPLICABLE TAXES next to the price */}
-              <span className="text-[8px] sm:text-[9px] font-bold text-purple-800 bg-[#E6E6FA] border border-purple-200 px-1.5 py-0.5 rounded uppercase whitespace-nowrap">
-                PRICE EXCLUDES APPLICABLE TAXES
-              </span>
             </div>
           )
         )}
