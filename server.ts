@@ -67,6 +67,11 @@ async function startServer() {
 
   // --- API ROUTES ---
 
+  app.get('/sitemap.xml', (req, res) => {
+    res.header('Content-Type', 'application/xml');
+    res.sendFile(path.join(process.cwd(), 'public', 'sitemap.xml'));
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
