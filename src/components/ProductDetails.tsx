@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Share2, CheckCircle2, ChevronLeft, ChevronRight, Search, X, Heart, ZoomIn, ArrowLeft } from 'lucide-react';
 import { api, optimizeCloudinaryUrl } from '../services/api';
 import { CONTACT_INFO, PRODUCTS } from '../data';
-import ImageWithLoader from './ImageWithLoader';
+import ImageWithLoader, { loadedUrls } from './ImageWithLoader';
 import { FaWhatsapp } from 'react-icons/fa';
 import Header from './Header';
 import Footer from './Footer';
@@ -24,8 +24,14 @@ export default function ProductDetails() {
   const [isMainImageLoaded, setIsMainImageLoaded] = useState(false);
 
   useEffect(() => {
-    setIsMainImageLoaded(false);
-  }, [activeImageIndex, slug]);
+    const images = product?.images && product.images.length > 0 ? product.images : (product?.image ? [product.image] : []);
+    const currentUrl = images[activeImageIndex] ? optimizeCloudinaryUrl(images[activeImageIndex]) : '';
+    if (currentUrl && loadedUrls.has(currentUrl)) {
+      setIsMainImageLoaded(true);
+    } else {
+      setIsMainImageLoaded(false);
+    }
+  }, [activeImageIndex, slug, product]);
 
   useEffect(() => {
     // Scroll to top when slug changes
@@ -204,6 +210,23 @@ export default function ProductDetails() {
           </div>
 
           <div className="bg-white rounded-3xl overflow-hidden shadow-lg border border-gray-100 flex flex-col md:flex-row mb-16">
+            {/* Preload all images of the product into the global cache for 30ms transitions */}
+            <div className="hidden" aria-hidden="true">
+              {allImages.filter((img: string) => !!img).map((img: string, idx: number) => {
+                const url = optimizeCloudinaryUrl(img);
+                return url ? (
+                  <img 
+                    key={idx} 
+                    src={url} 
+                    alt="" 
+                    onLoad={() => {
+                      loadedUrls.add(url);
+                    }} 
+                  />
+                ) : null;
+              })}
+            </div>
+
             {/* Left Image Section */}
             <div className="md:w-1/2 flex flex-col bg-[#f9f9f9] border-r border-gray-100">
               <div 
@@ -221,24 +244,24 @@ export default function ProductDetails() {
                     )}
                     <motion.img 
                       key={activeImageIndex}
-                      src={optimizeCloudinaryUrl(allImages[activeImageIndex])} 
+                      src={optimizeCloudinaryUrl(allImages[activeImageIndex]) || null} 
                       alt={product.name} 
                       loading="lazy"
                       onLoad={() => setIsMainImageLoaded(true)}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: isMainImageLoaded ? 1 : 0, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.2 }}
+                      transition={{ duration: 0.03 }}
                       drag="x"
                       dragConstraints={{ left: 0, right: 0 }}
                       dragElastic={0.2}
                       onDragEnd={(e, { offset }) => {
                         if (offset.x < -50) {
                           e.stopPropagation();
-                          setActiveImageIndex(prev => prev < allImages.length - 1 ? prev + 1 : 0);
+                          setActiveImageIndex(prev => prev < allImages.length - 1 ? prev + 1 : prev);
                         } else if (offset.x > 50) {
                           e.stopPropagation();
-                          setActiveImageIndex(prev => prev > 0 ? prev - 1 : allImages.length - 1);
+                          setActiveImageIndex(prev => prev > 0 ? prev - 1 : 0);
                         }
                       }}
                       className="w-full h-full max-h-[60vh] object-contain cursor-grab active:cursor-grabbing relative z-10"
@@ -343,11 +366,11 @@ export default function ProductDetails() {
               <span className="text-xs font-mono font-bold text-tiger-orange tracking-wider uppercase mb-2 block">
                 {product.category} • {product.subcategory}
               </span>
-              <h1 className="font-display font-bold text-3xl sm:text-4xl text-tiger-dark tracking-tight mb-4">
+              <h1 className="font-display font-bold text-3xl sm:text-4xl text-tiger-dark tracking-tight mb-2">
                 {product.name}
               </h1>
               
-              <div className="mb-6">
+              <div className="mb-6 flex flex-wrap items-center gap-4">
                 {product.discount ? (
                   <div className="flex items-baseline space-x-3 p-4 bg-[#f0fdf4] rounded-2xl border border-green-200 w-fit">
                     <span className="text-3xl font-bold text-green-800">
@@ -364,6 +387,9 @@ export default function ProductDetails() {
                     </div>
                   )
                 )}
+                <div className="text-xs font-extrabold text-purple-800 bg-[#E6E6FA] border border-purple-200 px-3 py-1.5 rounded-xl select-none uppercase">
+                  PRICE EXCLUDES APPLICABLE TAXES
+                </div>
               </div>
 
               <div className="prose prose-sm text-gray-600 mb-8 max-w-none">
@@ -435,49 +461,7 @@ export default function ProductDetails() {
               
               <div className="flex overflow-x-auto pb-8 space-x-6 snap-x hide-scrollbar">
                 {similarProducts.map((simProduct) => (
-                  <div 
-                    key={simProduct.id} 
-                    onClick={() => navigate(`/product/${simProduct.id}`)}
-                    className="flex-shrink-0 w-[180px] sm:w-[220px] bg-white rounded-md border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer snap-start group"
-                  >
-                    <div className="h-40 sm:h-48 bg-white relative flex items-center justify-center p-3 sm:p-4">
-                      {simProduct.image ? (
-                        <img 
-                          src={optimizeCloudinaryUrl(simProduct.image)} 
-                          alt={simProduct.name}
-                          loading="lazy"
-                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" 
-                        />
-                      ) : (
-                        <span className="text-[10px] text-gray-400">No image</span>
-                      )}
-                    </div>
-                    <div className="p-3 sm:p-4 text-left">
-                      <div className="mb-1">
-                        <span className="text-[9px] sm:text-[10px] font-medium text-gray-500 uppercase tracking-wide">
-                          {simProduct.category || "General"}
-                        </span>
-                      </div>
-                      <h4 className="font-sans font-medium text-sm text-gray-800 tracking-tight mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">
-                        {simProduct.name}
-                      </h4>
-                      <div className="flex items-center space-x-1 sm:space-x-2 mt-1 shrink-0 select-none">
-                        {simProduct.discount ? (
-                          <>
-                            <span className="text-sm sm:text-base font-bold text-gray-900">
-                              ₹{Math.round(Number(simProduct.originalPrice || simProduct.price?.replace(/[^0-9]/g, '')) - (Number(simProduct.originalPrice || simProduct.price?.replace(/[^0-9]/g, '')) * Number(simProduct.discount) / 100))}
-                            </span>
-                            <span className="text-[10px] text-gray-500 line-through">
-                              ₹{simProduct.originalPrice || simProduct.price?.replace(/[^0-9]/g, '')}
-                            </span>
-                            <span className="text-[10px] font-bold text-green-600">{simProduct.discount}% off</span>
-                          </>
-                        ) : (
-                          <span className="text-sm sm:text-base font-bold text-gray-900">{simProduct.price || 'Price on request'}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <SimilarProductCard key={simProduct.id} product={simProduct} navigate={navigate} />
                 ))}
               </div>
             </div>
@@ -545,6 +529,79 @@ export default function ProductDetails() {
           </div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function SimilarProductCard({ product, navigate }: { product: any, navigate: any, key?: any }) {
+  const [activeImgIdx, setActiveImgIdx] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const images = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : []);
+
+  useEffect(() => {
+    if (!isHovered || images.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setActiveImgIdx(prev => {
+        if (prev < images.length - 1) {
+          return prev + 1;
+        } else {
+          clearInterval(interval);
+          return prev;
+        }
+      });
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [isHovered, images.length]);
+
+  return (
+    <div 
+      onClick={() => navigate(`/product/${product.id}`)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="flex-shrink-0 w-[180px] sm:w-[220px] bg-white rounded-md border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer snap-start group"
+    >
+      <div className="h-40 sm:h-48 bg-white relative flex items-center justify-center p-3 sm:p-4">
+        <img 
+          src={optimizeCloudinaryUrl(images[activeImgIdx] || product.image) || null} 
+          alt={product.name}
+          loading="lazy"
+          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" 
+        />
+      </div>
+      <div className="p-3 sm:p-4 text-left">
+        <div className="mb-1">
+          <span className="text-[9px] sm:text-[10px] font-medium text-gray-500 uppercase tracking-wide">
+            {product.category || "General"}
+          </span>
+        </div>
+        <h4 className="font-sans font-medium text-sm text-gray-800 tracking-tight mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">
+          {product.name}
+        </h4>
+        <div className="flex flex-col mt-1 shrink-0 select-none">
+          <div className="flex items-center flex-wrap gap-1 sm:gap-2">
+            {product.discount ? (
+              <>
+                <span className="text-sm sm:text-base font-bold text-gray-900">
+                  ₹{Math.round(Number(product.originalPrice || product.price?.replace(/[^0-9]/g, '')) - (Number(product.originalPrice || product.price?.replace(/[^0-9]/g, '')) * Number(product.discount) / 100))}
+                </span>
+                <span className="text-[10px] text-gray-500 line-through">
+                  ₹{product.originalPrice || product.price?.replace(/[^0-9]/g, '')}
+                </span>
+                <span className="text-[10px] font-bold text-green-600">{product.discount}% off</span>
+              </>
+            ) : (
+              <span className="text-sm sm:text-base font-bold text-gray-900">{product.price || 'Price on request'}</span>
+            )}
+            {/* PRICE EXCLUDES APPLICABLE TAXES next to the price */}
+            <span className="text-[8px] font-bold text-purple-800 bg-[#E6E6FA] border border-purple-200 px-1.5 py-0.5 rounded uppercase whitespace-nowrap">
+              PRICE EXCLUDES APPLICABLE TAXES
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

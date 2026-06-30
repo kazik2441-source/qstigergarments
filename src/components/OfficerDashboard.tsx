@@ -4,7 +4,7 @@ import { Package, Users, Shield, LogOut, Plus, Edit2, Trash2, Image as ImageIcon
 const logoImg = '/favicon.jpg';
 import ceoImg from '../assets/ceo.jpg';
 import { compressImage } from '../utils';
-import { api, uploadImageToCloudinary } from '../services/api';
+import { api, uploadImageToCloudinary, optimizeCloudinaryUrl } from '../services/api';
 
 export default function OfficerDashboard() {
   const navigate = useNavigate();
@@ -37,6 +37,25 @@ export default function OfficerDashboard() {
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [productForm, setProductForm] = useState({ id: '', name: '', price: '', discount: '', description: '', image: '', images: [] as string[] });
+
+  // Loading & Local Preview states for smooth image uploads
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [previewLocalUrls, setPreviewLocalUrls] = useState<string[]>([]);
+  
+  const [isUploadingBlogImage, setIsUploadingBlogImage] = useState(false);
+  const [blogLocalPreview, setBlogLocalPreview] = useState<string | null>(null);
+
+  const [isUploadingReviewAvatar, setIsUploadingReviewAvatar] = useState(false);
+  const [reviewLocalPreview, setReviewLocalPreview] = useState<string | null>(null);
+
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoLocalPreview, setLogoLocalPreview] = useState<string | null>(null);
+
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [bannerLocalPreview, setBannerLocalPreview] = useState<string | null>(null);
+
+  const [isUploadingCeoImage, setIsUploadingCeoImage] = useState(false);
+  const [ceoLocalPreview, setCeoLocalPreview] = useState<string | null>(null);
 
   // Blog form state
   const [isAddingBlog, setIsAddingBlog] = useState(false);
@@ -397,31 +416,54 @@ export default function OfficerDashboard() {
                           type="file" 
                           accept="image/*"
                           multiple
+                          disabled={isUploadingImages}
                           onChange={async (e) => {
-                            const files = Array.from(e.target.files || []);
+                            const files = Array.from(e.target.files || []) as File[];
                             if (files.length > 0) {
-                              const uploadedUrls = await Promise.all(
-                                files.map((file: any) => uploadImageToCloudinary(file))
-                              );
-                              setProductForm(prev => {
-                                const newImages = [...(prev.images || []), ...uploadedUrls];
-                                return {
-                                  ...prev,
-                                  image: newImages.length > 0 ? newImages[0] : '', // Keep main image sync
-                                  images: newImages
-                                };
-                              });
+                              setIsUploadingImages(true);
+                              
+                              // Generate local object URLs for instant preview
+                              const localUrls = files.map((file: File) => URL.createObjectURL(file));
+                              setPreviewLocalUrls(prev => [...prev, ...localUrls]);
+
+                              try {
+                                const uploadedUrls = await Promise.all(
+                                  files.map((file: any) => uploadImageToCloudinary(file))
+                                );
+                                setProductForm(prev => {
+                                  const newImages = [...(prev.images || []), ...uploadedUrls];
+                                  return {
+                                    ...prev,
+                                    image: newImages.length > 0 ? newImages[0] : '', // Keep main image sync
+                                    images: newImages
+                                  };
+                                });
+                              } catch (err) {
+                                console.error("Upload failed", err);
+                              } finally {
+                                setIsUploadingImages(false);
+                                // Clean up the object URLs
+                                localUrls.forEach(url => URL.revokeObjectURL(url));
+                                setPreviewLocalUrls([]);
+                              }
                             }
                           }} 
-                          className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none" 
+                          className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none disabled:opacity-50" 
                         />
                       </div>
                       
-                      {productForm.images && productForm.images.length > 0 ? (
+                      {isUploadingImages && (
+                        <div className="text-sm font-medium text-tiger-orange flex items-center space-x-2 animate-pulse">
+                          <div className="w-4 h-4 border-2 border-tiger-orange border-t-transparent rounded-full animate-spin"></div>
+                          <span>Uploading images to Cloudinary, please wait...</span>
+                        </div>
+                      )}
+
+                      {((productForm.images && productForm.images.length > 0) || previewLocalUrls.length > 0) ? (
                         <div className="flex flex-wrap gap-4 mt-4">
-                          {productForm.images.map((imgUrl, idx) => (
-                            <div key={idx} className="h-32 w-32 rounded-lg border border-gray-200 overflow-hidden relative bg-[#f9f9f9]">
-                              <img src={imgUrl} alt={`Preview ${idx + 1}`} className="w-full h-full object-contain" />
+                          {productForm.images?.map((imgUrl, idx) => (
+                            <div key={`uploaded-${idx}`} className="h-32 w-32 rounded-lg border border-gray-200 overflow-hidden relative bg-[#f9f9f9]">
+                              <img src={optimizeCloudinaryUrl(imgUrl) || null} alt={`Preview ${idx + 1}`} className="w-full h-full object-contain" />
                               <button 
                                 type="button" 
                                 onClick={() => setProductForm(prev => {
@@ -438,11 +480,19 @@ export default function OfficerDashboard() {
                               </button>
                             </div>
                           ))}
+                          {previewLocalUrls.map((localUrl, idx) => (
+                            <div key={`local-${idx}`} className="h-32 w-32 rounded-lg border-2 border-dashed border-tiger-orange/50 overflow-hidden relative bg-[#f9f9f9] flex items-center justify-center">
+                              <img src={localUrl} alt="Uploading..." className="w-full h-full object-contain opacity-50" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         productForm.image && (
                           <div className="h-32 w-32 rounded-lg border border-gray-200 overflow-hidden relative bg-[#f9f9f9]">
-                            <img src={productForm.image} alt="Preview" className="w-full h-full object-contain" />
+                            <img src={optimizeCloudinaryUrl(productForm.image)} alt="Preview" className="w-full h-full object-contain" />
                             <button 
                               type="button" 
                               onClick={() => setProductForm({...productForm, image: '', images: []})}
@@ -471,34 +521,7 @@ export default function OfficerDashboard() {
                   </div>
                 ) : (
                   products.map(product => (
-                    <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                      <div className="h-64 sm:h-72 overflow-hidden bg-[#f9f9f9] relative flex items-center justify-center p-2">
-                        <img src={(product.images && product.images.length > 0) ? product.images[0] : product.image} alt={product.name} className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&q=80&w=800'; }} />
-                      </div>
-                      <div className="p-4 flex-1 flex flex-col">
-                        <h3 className="font-semibold text-lg text-gray-900 line-clamp-1">{product.name}</h3>
-                        {product.discount ? (
-                          <div className="flex items-baseline space-x-2 mt-1">
-                            <span className="text-tiger-orange font-bold text-lg">
-                              ₹{Math.round(Number(product.price) - (Number(product.price) * Number(product.discount) / 100))}
-                            </span>
-                            <span className="text-gray-400 text-sm line-through">₹{product.price}</span>
-                            <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-semibold">{product.discount}% OFF</span>
-                          </div>
-                        ) : (
-                          <p className="text-tiger-orange font-medium mt-1">₹{product.price}</p>
-                        )}
-                        <p className="text-gray-500 text-sm mt-2 line-clamp-2 flex-1">{product.description}</p>
-                        <div className="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-100">
-                          <button onClick={() => handleEditProduct(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <DashboardProductCard key={product.id} product={product} handleEditProduct={handleEditProduct} handleDeleteProduct={handleDeleteProduct} />
                   ))
                 )}
               </div>
@@ -647,25 +670,53 @@ export default function OfficerDashboard() {
                       <input 
                         type="file" 
                         accept="image/*" 
+                        disabled={isUploadingBlogImage}
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const uploadedUrl = await uploadImageToCloudinary(file);
-                            setBlogForm({...blogForm, image: uploadedUrl});
+                            setIsUploadingBlogImage(true);
+                            const localUrl = URL.createObjectURL(file);
+                            setBlogLocalPreview(localUrl);
+
+                            try {
+                              const uploadedUrl = await uploadImageToCloudinary(file);
+                              setBlogForm({...blogForm, image: uploadedUrl});
+                            } catch (err) {
+                              console.error("Blog image upload failed", err);
+                            } finally {
+                              setIsUploadingBlogImage(false);
+                              URL.revokeObjectURL(localUrl);
+                              setBlogLocalPreview(null);
+                            }
                           }
                         }} 
-                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none" 
+                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none disabled:opacity-50" 
                       />
-                      {blogForm.image && (
-                        <div className="h-32 w-32 rounded-lg border border-gray-200 overflow-hidden relative bg-gray-50">
-                          <img src={blogForm.image} alt="Preview" className="w-full h-full object-cover" />
-                          <button 
-                            type="button" 
-                            onClick={() => setBlogForm({...blogForm, image: ''})}
-                            className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-red-500 hover:text-red-700 hover:bg-white transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                      
+                      {isUploadingBlogImage && (
+                        <div className="text-sm font-medium text-tiger-orange flex items-center space-x-2 animate-pulse">
+                          <div className="w-4 h-4 border-2 border-tiger-orange border-t-transparent rounded-full animate-spin"></div>
+                          <span>Uploading cover image, please wait...</span>
+                        </div>
+                      )}
+
+                      {(blogForm.image || blogLocalPreview) && (
+                        <div className="h-32 w-32 rounded-lg border border-gray-200 overflow-hidden relative bg-gray-50 flex items-center justify-center">
+                          <img src={optimizeCloudinaryUrl(blogForm.image || blogLocalPreview || '')} alt="Preview" className="w-full h-full object-cover" />
+                          {isUploadingBlogImage && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                          )}
+                          {!isUploadingBlogImage && (
+                            <button 
+                              type="button" 
+                              onClick={() => setBlogForm({...blogForm, image: ''})}
+                              className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-red-500 hover:text-red-700 hover:bg-white transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -759,18 +810,44 @@ export default function OfficerDashboard() {
                       <input 
                         type="file" 
                         accept="image/*" 
+                        disabled={isUploadingReviewAvatar}
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const uploadedUrl = await uploadImageToCloudinary(file);
-                            setReviewForm({...reviewForm, avatar: uploadedUrl});
+                            setIsUploadingReviewAvatar(true);
+                            const localUrl = URL.createObjectURL(file);
+                            setReviewLocalPreview(localUrl);
+
+                            try {
+                              const uploadedUrl = await uploadImageToCloudinary(file);
+                              setReviewForm({...reviewForm, avatar: uploadedUrl});
+                            } catch (err) {
+                              console.error("Avatar upload failed", err);
+                            } finally {
+                              setIsUploadingReviewAvatar(false);
+                              URL.revokeObjectURL(localUrl);
+                              setReviewLocalPreview(null);
+                            }
                           }
                         }} 
-                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none" 
+                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none disabled:opacity-50" 
                       />
-                      {reviewForm.avatar && (
-                        <div className="h-20 w-20 rounded-full border border-gray-200 overflow-hidden relative bg-gray-50">
-                          <img src={reviewForm.avatar} alt="Avatar Preview" className="w-full h-full object-cover" />
+                      
+                      {isUploadingReviewAvatar && (
+                        <div className="text-sm font-medium text-tiger-orange flex items-center space-x-2 animate-pulse">
+                          <div className="w-4 h-4 border-2 border-tiger-orange border-t-transparent rounded-full animate-spin"></div>
+                          <span>Uploading profile picture, please wait...</span>
+                        </div>
+                      )}
+
+                      {(reviewForm.avatar || reviewLocalPreview) && (
+                        <div className="h-20 w-20 rounded-full border border-gray-200 overflow-hidden relative bg-gray-50 flex items-center justify-center">
+                          <img src={optimizeCloudinaryUrl(reviewForm.avatar || reviewLocalPreview || '')} alt="Avatar Preview" className="w-full h-full object-cover" />
+                          {isUploadingReviewAvatar && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -887,26 +964,54 @@ export default function OfficerDashboard() {
                     <input 
                       type="file" 
                       accept="image/*" 
+                      disabled={isUploadingLogo}
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const uploadedUrl = await uploadImageToCloudinary(file);
-                          setSiteSettings({...siteSettings, logo: uploadedUrl});
-                          await api.updateSiteSettings({ logoUrl: uploadedUrl });
+                          setIsUploadingLogo(true);
+                          const localUrl = URL.createObjectURL(file);
+                          setLogoLocalPreview(localUrl);
+
+                          try {
+                            const uploadedUrl = await uploadImageToCloudinary(file);
+                            setSiteSettings({...siteSettings, logo: uploadedUrl});
+                            await api.updateSiteSettings({ logoUrl: uploadedUrl });
+                          } catch (err) {
+                            console.error("Logo upload failed", err);
+                          } finally {
+                            setIsUploadingLogo(false);
+                            URL.revokeObjectURL(localUrl);
+                            setLogoLocalPreview(null);
+                          }
                         }
                       }} 
-                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none" 
+                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none disabled:opacity-50" 
                     />
-                    {siteSettings.logo && (
+                    
+                    {isUploadingLogo && (
+                      <div className="text-sm font-medium text-tiger-orange flex items-center space-x-2 animate-pulse">
+                        <div className="w-4 h-4 border-2 border-tiger-orange border-t-transparent rounded-full animate-spin"></div>
+                        <span>Uploading company logo, please wait...</span>
+                      </div>
+                    )}
+
+                    {(siteSettings.logo || logoLocalPreview) && (
                       <div className="h-32 w-32 rounded-lg border border-gray-200 overflow-hidden relative bg-gray-50 p-2 flex items-center justify-center">
-                        <img src={siteSettings.logo} alt="Company Logo" className="max-w-full max-h-full object-contain" />
-                        <button 
-                          type="button" 
-                          onClick={() => setSiteSettings({...siteSettings, logo: ''})}
-                          className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-red-500 hover:text-red-700 hover:bg-white transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <img src={optimizeCloudinaryUrl(siteSettings.logo || logoLocalPreview || '')} alt="Company Logo" className="max-w-full max-h-full object-contain" />
+                        {isUploadingLogo && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                        {!isUploadingLogo && (
+                          <button 
+                            type="button" 
+                            onClick={() => setSiteSettings({...siteSettings, logo: ''})}
+                            className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-red-500 hover:text-red-700 hover:bg-white transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -918,25 +1023,53 @@ export default function OfficerDashboard() {
                     <input 
                       type="file" 
                       accept="image/*" 
+                      disabled={isUploadingBanner}
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const uploadedUrl = await uploadImageToCloudinary(file);
-                          setSiteSettings({...siteSettings, homeBanner: uploadedUrl});
+                          setIsUploadingBanner(true);
+                          const localUrl = URL.createObjectURL(file);
+                          setBannerLocalPreview(localUrl);
+
+                          try {
+                            const uploadedUrl = await uploadImageToCloudinary(file);
+                            setSiteSettings({...siteSettings, homeBanner: uploadedUrl});
+                          } catch (err) {
+                            console.error("Banner upload failed", err);
+                          } finally {
+                            setIsUploadingBanner(false);
+                            URL.revokeObjectURL(localUrl);
+                            setBannerLocalPreview(null);
+                          }
                         }
                       }} 
-                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none" 
+                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none disabled:opacity-50" 
                     />
-                    {siteSettings.homeBanner && (
-                      <div className="h-32 w-full rounded-lg border border-gray-200 overflow-hidden relative bg-gray-50">
-                        <img src={siteSettings.homeBanner} alt="Hero Banner" className="w-full h-full object-cover" />
-                        <button 
-                          type="button" 
-                          onClick={() => setSiteSettings({...siteSettings, homeBanner: ''})}
-                          className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-red-500 hover:text-red-700 hover:bg-white transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                    
+                    {isUploadingBanner && (
+                      <div className="text-sm font-medium text-tiger-orange flex items-center space-x-2 animate-pulse">
+                        <div className="w-4 h-4 border-2 border-tiger-orange border-t-transparent rounded-full animate-spin"></div>
+                        <span>Uploading background banner, please wait...</span>
+                      </div>
+                    )}
+
+                    {(siteSettings.homeBanner || bannerLocalPreview) && (
+                      <div className="h-32 w-full rounded-lg border border-gray-200 overflow-hidden relative bg-gray-50 flex items-center justify-center">
+                        <img src={optimizeCloudinaryUrl(siteSettings.homeBanner || bannerLocalPreview || '')} alt="Hero Banner" className="w-full h-full object-cover" />
+                        {isUploadingBanner && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                        {!isUploadingBanner && (
+                          <button 
+                            type="button" 
+                            onClick={() => setSiteSettings({...siteSettings, homeBanner: ''})}
+                            className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-red-500 hover:text-red-700 hover:bg-white transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -948,26 +1081,54 @@ export default function OfficerDashboard() {
                     <input 
                       type="file" 
                       accept="image/*" 
+                      disabled={isUploadingCeoImage}
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const uploadedUrl = await uploadImageToCloudinary(file);
-                          setSiteSettings({...siteSettings, ceoImage: uploadedUrl});
-                          await api.updateSiteSettings({ ceoImageUrl: uploadedUrl });
+                          setIsUploadingCeoImage(true);
+                          const localUrl = URL.createObjectURL(file);
+                          setCeoLocalPreview(localUrl);
+
+                          try {
+                            const uploadedUrl = await uploadImageToCloudinary(file);
+                            setSiteSettings({...siteSettings, ceoImage: uploadedUrl});
+                            await api.updateSiteSettings({ ceoImageUrl: uploadedUrl });
+                          } catch (err) {
+                            console.error("CEO image upload failed", err);
+                          } finally {
+                            setIsUploadingCeoImage(false);
+                            URL.revokeObjectURL(localUrl);
+                            setCeoLocalPreview(null);
+                          }
                         }
                       }} 
-                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none" 
+                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-tiger-orange/10 file:text-tiger-orange hover:file:bg-tiger-orange/20 cursor-pointer outline-none disabled:opacity-50" 
                     />
-                    {siteSettings.ceoImage && (
-                      <div className="h-32 w-32 rounded-lg border border-gray-200 overflow-hidden relative bg-gray-50">
-                        <img src={siteSettings.ceoImage} alt="CEO Image" className="w-full h-full object-cover" />
-                        <button 
-                          type="button" 
-                          onClick={() => setSiteSettings({...siteSettings, ceoImage: ''})}
-                          className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-red-500 hover:text-red-700 hover:bg-white transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                    
+                    {isUploadingCeoImage && (
+                      <div className="text-sm font-medium text-tiger-orange flex items-center space-x-2 animate-pulse">
+                        <div className="w-4 h-4 border-2 border-tiger-orange border-t-transparent rounded-full animate-spin"></div>
+                        <span>Uploading CEO profile image, please wait...</span>
+                      </div>
+                    )}
+
+                    {(siteSettings.ceoImage || ceoLocalPreview) && (
+                      <div className="h-32 w-32 rounded-lg border border-gray-200 overflow-hidden relative bg-gray-50 flex items-center justify-center">
+                        <img src={optimizeCloudinaryUrl(siteSettings.ceoImage || ceoLocalPreview || '')} alt="CEO Image" className="w-full h-full object-cover" />
+                        {isUploadingCeoImage && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                        {!isUploadingCeoImage && (
+                          <button 
+                            type="button" 
+                            onClick={() => setSiteSettings({...siteSettings, ceoImage: ''})}
+                            className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-red-500 hover:text-red-700 hover:bg-white transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -981,6 +1142,70 @@ export default function OfficerDashboard() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function DashboardProductCard({ product, handleEditProduct, handleDeleteProduct }: { product: any, handleEditProduct: any, handleDeleteProduct: any, key?: any }) {
+  const [activeImgIdx, setActiveImgIdx] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const images = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : []);
+
+  useEffect(() => {
+    if (!isHovered || images.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setActiveImgIdx(prev => {
+        if (prev < images.length - 1) {
+          return prev + 1;
+        } else {
+          clearInterval(interval);
+          return prev;
+        }
+      });
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [isHovered, images.length]);
+
+  return (
+    <div 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer"
+    >
+      <div className="h-64 sm:h-72 overflow-hidden bg-[#f9f9f9] relative flex items-center justify-center p-2">
+        <img 
+          src={optimizeCloudinaryUrl(images[activeImgIdx] || product.image) || null} 
+          alt={product.name} 
+          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" 
+          onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&q=80&w=800'; }} 
+        />
+      </div>
+      <div className="p-4 flex-1 flex flex-col">
+        <h3 className="font-semibold text-lg text-gray-900 line-clamp-1 group-hover:text-tiger-orange transition-colors">{product.name}</h3>
+        {product.discount ? (
+          <div className="flex items-baseline space-x-2 mt-1">
+            <span className="text-tiger-orange font-bold text-lg">
+              ₹{Math.round(Number(product.price) - (Number(product.price) * Number(product.discount) / 100))}
+            </span>
+            <span className="text-gray-400 text-sm line-through">₹{product.price}</span>
+            <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-semibold">{product.discount}% OFF</span>
+          </div>
+        ) : (
+          <p className="text-tiger-orange font-medium mt-1">₹{product.price}</p>
+        )}
+        <p className="text-gray-500 text-sm mt-2 line-clamp-2 flex-1">{product.description}</p>
+        <div className="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-100">
+          <button onClick={() => handleEditProduct(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

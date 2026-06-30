@@ -167,7 +167,8 @@ async function startServer() {
         features: p.features,
         discount: p.discount,
         description: p.description,
-        image: p.image
+        image: p.image,
+        images: p.images || []
       })));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch products" });
