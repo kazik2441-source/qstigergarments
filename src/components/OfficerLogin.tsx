@@ -4,9 +4,9 @@ import { Shield, Eye, EyeOff } from 'lucide-react';
 import { api } from '../services/api';
 
 const AUTHORIZED_OFFICERS = [
-  { email: 'kazisanaulla765@gmail.com', password: '8824@', name: 'Super-Admin (Owner)' },
-  { email: 'kazik2441@gmail.com', password: '8820@', name: 'Officer 2' },
-  { email: 'qstigergarments2010@gmail.com', password: '8920@', name: 'Officer 3' }
+  { email: 'kazisanaulla765@gmail.com', password: '8824@KAZI', name: 'Super-Admin (Owner)' },
+  { email: 'kazik2441@gmail.com', password: '8822@KAZI', name: 'Officer 2' },
+  { email: 'qstigergarments2010@gmail.com', password: '8889@KAZI', name: 'Officer 3' }
 ];
 
 export default function OfficerLogin() {
