@@ -388,7 +388,7 @@ export default function ProductDetails() {
                   )
                 )}
                 <div className="text-[11px] text-[#000000] select-none mt-1">
-                  Plus applicable taxes
+                  NOTE: Plus applicable taxes
                 </div>
               </div>
 
